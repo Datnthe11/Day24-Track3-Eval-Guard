@@ -111,119 +111,119 @@ Day24-Track3-Eval-Guard/
 
 ---
 
-## Các phases
+## Các giai đoạn (Phases)
 
-### Phase A — RAGAS Production Eval (30 phút)
+### Giai đoạn A (Phase A) — Đánh giá Production với RAGAS (30 phút)
 
-Chạy RAGAS trên **50 câu hỏi** với **3 distributions** để tìm ra điểm yếu của pipeline.
+Chạy RAGAS trên **50 câu hỏi** với **3 phân phối (distributions)** để tìm ra điểm yếu của pipeline.
 
-| Distribution | Số câu | Đặc điểm |
+| Phân phối (Distribution) | Số câu | Đặc điểm |
 |---|---|---|
 | `factual` | 20 | Tra cứu chính sách đơn giản, 1 tài liệu |
 | `multi_hop` | 20 | Kết hợp nhiều tài liệu, tính toán, suy luận |
-| `adversarial` | 10 | Bẫy: version conflicts (v2023 vs v2024), negation traps |
+| `adversarial` | 10 | Bẫy: xung đột phiên bản (v2023 vs v2024), bẫy phủ định |
 
-**4 tasks cần implement:** `group_by_distribution()` → `run_ragas_50q()` → `bottom_10()` → `cluster_analysis()`
+**4 tasks cần thực hiện:** `group_by_distribution()` → `run_ragas_50q()` → `bottom_10()` → `cluster_analysis()`
 
 ```bash
 python src/phase_a_ragas.py
-# Output: reports/ragas_50q.json
+# Đầu ra: reports/ragas_50q.json
 ```
 
-### Phase B — LLM-as-Judge (30 phút)
+### Giai đoạn B (Phase B) — LLM làm Giám khảo (30 phút)
 
-Dùng LLM để so sánh cặp answers và đo độ đồng thuận với nhãn của con người.
+Dùng LLM để so sánh cặp câu trả lời và đo độ đồng thuận với nhãn của con người.
 
-- **Pairwise judge:** LLM chọn answer A hay B tốt hơn
-- **Swap-and-average:** Đổi thứ tự A/B để phát hiện position bias
+- **Đánh giá theo cặp (Pairwise judge):** LLM chọn câu trả lời A hay B tốt hơn
+- **Hoán đổi và lấy trung bình (Swap-and-average):** Đổi thứ tự A/B để phát hiện thiên vị vị trí (position bias)
 - **Cohen's κ:** So sánh với 10 nhãn nhân trong `human_labels_10q.json`
-- **Bias report:** Đo position bias + verbosity bias
+- **Báo cáo thiên vị (Bias report):** Đo độ lệch vị trí (position bias) + độ lệch độ dài (verbosity bias)
 
 ```bash
 python src/phase_b_judge.py
-# Output: reports/judge_results.json
+# Đầu ra: reports/judge_results.json
 ```
 
-### Phase C — NeMo Guardrails (30 phút)
+### Giai đoạn C (Phase C) — Hàng rào bảo vệ NeMo (30 phút)
 
 Xây dựng lớp bảo vệ nhiều tầng trước và sau RAG pipeline.
 
 ```
-Input → [Presidio PII] → [NeMo Input Rail] → RAG → [NeMo Output Rail] → Response
+Đầu vào → [Quét PII bằng Presidio] → [Hàng rào đầu vào NeMo] → RAG → [Hàng rào đầu ra NeMo] → Trả lời
 ```
 
-- **Presidio:** Phát hiện CCCD, số điện thoại VN, email trong query
-- **NeMo Input Rail:** Chặn jailbreak, off-topic, prompt injection
-- **NeMo Output Rail:** Kiểm tra response trước khi trả về user
-- **P95 Latency:** Đo latency từng tầng (Presidio ≈ <10ms, NeMo ≈ 200–500ms)
+- **Presidio:** Phát hiện CCCD, số điện thoại VN, email trong câu hỏi
+- **Hàng rào đầu vào NeMo:** Chặn vượt rào (jailbreak), lạc đề (off-topic), tiêm prompt (prompt injection)
+- **Hàng rào đầu ra NeMo:** Kiểm tra phản hồi trước khi trả về cho người dùng
+- **Độ trễ P95 (P95 Latency):** Đo độ trễ từng tầng (Presidio ≈ <10ms, NeMo ≈ 200–500ms)
 
 ```bash
 python src/phase_c_guard.py
-# Output: reports/guard_results.json
+# Đầu ra: reports/guard_results.json
 ```
 
 ---
 
-## Bộ test set 50 câu hỏi
+## Bộ dữ liệu kiểm thử 50 câu hỏi
 
-Bộ test set này được thiết kế đặc biệt để **stress-test** pipeline của bạn:
+Bộ test set này được thiết kế đặc biệt để **kiểm tra sức chịu đựng (stress-test)** pipeline của bạn:
 
-- **Factual:** Câu hỏi thẳng, nhưng corpus có nhiều phiên bản policy (v2023/v2024, v1/v2) → pipeline cần biết chọn phiên bản đúng
-- **Multi-hop:** Tính toán lương thử việc, phí phạt tạm ứng, ngày phép tích lũy → cần kết hợp nhiều tài liệu
-- **Adversarial:** Cố tình hỏi về policy cũ, dùng phủ định ("có nên tự xử lý không?"), hỏi VPN cá nhân → đây là những câu pipeline hay nhầm nhất
+- **Thực tế (Factual):** Câu hỏi thẳng, nhưng corpus có nhiều phiên bản policy (v2023/v2024, v1/v2) → pipeline cần biết chọn phiên bản đúng
+- **Suy luận nhiều bước (Multi-hop):** Tính toán lương thử việc, phí phạt tạm ứng, ngày phép tích lũy → cần kết hợp nhiều tài liệu
+- **Tấn công (Adversarial):** Cố tình hỏi về policy cũ, dùng phủ định ("có nên tự xử lý không?"), hỏi VPN cá nhân → đây là những câu pipeline hay nhầm nhất
 
 ---
 
-## Chạy tests
+## Chạy kiểm thử (Tests)
 
 ```bash
 pytest tests/ -v                     # Chạy toàn bộ test suite
-pytest tests/test_phase_a.py -v      # Chỉ Phase A
-pytest tests/test_phase_b.py -v      # Chỉ Phase B
-pytest tests/test_phase_c.py -v      # Chỉ Phase C
+pytest tests/test_phase_a.py -v      # Chỉ chạy Giai đoạn A
+pytest tests/test_phase_b.py -v      # Chỉ chạy Giai đoạn B
+pytest tests/test_phase_c.py -v      # Chỉ chạy Giai đoạn C
 ```
 
 ---
 
-## Kiểm tra trước khi nộp
+## Kiểm tra trước khi nộp bài
 
 ```bash
 python check_lab.py
 ```
 
-Checklist:
-- [ ] Day 18 source files đã copy vào `src/`
-- [ ] `answers_50q.json` đã được generate
-- [ ] 0 TODOs còn lại trong `src/phase_*.py`
-- [ ] `reports/ragas_50q.json`, `judge_results.json`, `guard_results.json` đã có
-- [ ] `reports/blueprint.md` đã điền đầy đủ
-- [ ] `pytest tests/` pass toàn bộ
+Danh sách kiểm tra (Checklist):
+- [x] Các file mã nguồn Day 18 đã được chép vào `src/`
+- [x] `answers_50q.json` đã được tạo
+- [x] 0 TODOs còn lại trong `src/phase_*.py`
+- [x] `reports/ragas_50q.json`, `judge_results.json`, `guard_results.json` đã có sẵn
+- [x] `reports/blueprint.md` đã được điền đầy đủ
+- [x] `pytest tests/` pass toàn bộ 100%
 
 ---
 
-## Deliverables (push lên GitHub trước khi hết giờ)
+## Bàn giao (đẩy lên GitHub trước khi hết giờ)
 
-1. **`src/phase_a_ragas.py`** — Tasks 1–4 (RAGAS eval)
-2. **`src/phase_b_judge.py`** — Tasks 5–8 (LLM Judge)
-3. **`src/phase_c_guard.py`** — Tasks 9–12 (Guardrails)
+1. **`src/phase_a_ragas.py`** — Tasks 1–4 (Đánh giá RAGAS)
+2. **`src/phase_b_judge.py`** — Tasks 5–8 (Giám khảo LLM)
+3. **`src/phase_c_guard.py`** — Tasks 9–12 (Hàng rào bảo vệ)
 4. **`reports/blueprint.md`** — Task 13 (CI/CD blueprint, điền tay)
-5. **`analysis/failure_clusters.md`** — Phân tích Phase A
-6. **`analysis/bias_report.md`** — Phân tích Phase B
+5. **`analysis/failure_clusters.md`** — Phân tích Giai đoạn A
+6. **`analysis/bias_report.md`** — Phân tích Giai đoạn B
 
 ---
 
 ## Điểm số
 
-| Phase | Điểm |
+| Giai đoạn | Điểm |
 |---|---|
-| Phase A: RAGAS (Tasks 1–4) | 30 |
-| Phase B: Judge (Tasks 5–8) | 35 |
-| Phase C: Guard (Tasks 9–12 + blueprint) | 35 |
+| Giai đoạn A: RAGAS (Tasks 1–4) | 30 |
+| Giai đoạn B: Giám khảo (Tasks 5–8) | 35 |
+| Giai đoạn C: Hàng rào (Tasks 9–12 + blueprint) | 35 |
 | **Tổng** | **100** |
-| Bonus (κ>0.6, pass rate≥18/20, adversarial avg<factual avg) | **+10** |
+| Thưởng thêm (κ>0.6, tỷ lệ qua bài ≥18/20, tb tấn công<tb thực tế) | **+10** |
 
 Chi tiết xem thêm: [`RUBRIC.md`](RUBRIC.md)
 
 ---
 
-Chúc các bạn code vui! 🚀 Nếu gặp vấn đề, hãy raise tay — mentors luôn sẵn sàng hỗ trợ.
+Chúc các bạn code vui! 🚀 Nếu gặp vấn đề, hãy gọi hỗ trợ — mentors luôn sẵn sàng hỗ trợ.

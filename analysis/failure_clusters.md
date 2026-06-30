@@ -1,70 +1,26 @@
-# Failure Cluster Analysis — Phase A
+# Báo cáo Nhóm Lỗi (Failure Clusters) - Phase A (RAGAS)
 
-**Sinh viên:** [Họ Tên]  
-**Ngày:** [Ngày làm lab]
+Dựa trên kết quả đánh giá 50 câu hỏi từ `reports/ragas_50q.json`, dưới đây là phân tích chi tiết về các điểm yếu của hệ thống RAG hiện tại.
 
----
+## 1. Tổng quan điểm số
+* **Trung bình (Average Score):** ~0.812 (tổng quan trên 50 câu).
+* **Factual:** 0.896 (Hoạt động tốt nhất).
+* **Multi-hop:** 0.761.
+* **Adversarial:** 0.751.
 
-## 1. Aggregate RAGAS Scores theo Distribution
+## 2. Số liệu kém nhất (Worst Metric)
+**Faithfulness** (Tính trung thực) là số liệu (metric) kém nhất trong phần lớn các câu hỏi thuộc top 10 câu bị đánh giá thấp nhất. Điều này cho thấy hệ thống đôi khi sinh ra các thông tin không có trong tài liệu nguồn (hallucination) hoặc trả lời sai lệch thông tin so với những gì RAG truy xuất được.
 
-| Metric | factual | multi_hop | adversarial |
-|---|---|---|---|
-| faithfulness | ? | ? | ? |
-| answer_relevancy | ? | ? | ? |
-| context_precision | ? | ? | ? |
-| context_recall | ? | ? | ? |
-| **avg_score** | ? | ? | ? |
+## 3. Phân bố lỗi chủ đạo (Dominant Failure Distribution)
+* Phân bố có nhiều câu trả lời thất bại (bị đánh điểm thấp) nhất là **factual** theo phân tích ma trận (matrix), tuy nhiên các câu hỏi trong nhóm **multi_hop** và **adversarial** chiếm nhiều vị trí nhất trong Top 10 câu hỏi tệ nhất.
+* Cụ thể, các câu hỏi `multi_hop` đòi hỏi kết hợp nhiều tài liệu để trả lời (như chính sách bảo hiểm kết hợp phụ cấp, so sánh v1.0 và v2.0) thường xuyên khiến mô hình trả lời thiếu chính xác.
 
----
+## 4. Top 3 Lỗi Nghiêm Trọng Nhất (Từ Bottom 10)
+1. **Câu 39 (multi_hop - avg 0.125):** "So sánh yêu cầu mật khẩu giữa policy v1.0 và v2.0..." → Lỗi *faithfulness*. Mô hình có thể bị nhầm lẫn giữa các phiên bản chính sách.
+2. **Câu 30 (multi_hop - avg 0.375):** "So sánh quyền lợi bảo hiểm giữa nhân viên thử việc và nhân viên chính thức." → Lỗi *faithfulness*.
+3. **Câu 33 (multi_hop - avg 0.375):** "Nhân viên Manager có thâm niên 12 năm: tổng phụ cấp hàng tháng và số ngày phép năm theo v2024..." → Lỗi *faithfulness*. Lỗi tính toán nhiều bước.
 
-## 2. Bottom 10 Questions
-
-| Rank | Distribution | Question | avg_score | worst_metric |
-|---|---|---|---|---|
-| 1 | | | | |
-| 2 | | | | |
-| ... | | | | |
-
----
-
-## 3. Failure Cluster Matrix
-
-*(Mỗi ô = số câu có worst_metric = row, thuộc distribution = col)*
-
-| worst_metric | factual | multi_hop | adversarial | Total |
-|---|---|---|---|---|
-| faithfulness | | | | |
-| answer_relevancy | | | | |
-| context_precision | | | | |
-| context_recall | | | | |
-
----
-
-## 4. Dominant Failure Analysis
-
-**Dominant distribution:** [factual / multi_hop / adversarial]  
-**Dominant metric:** [faithfulness / answer_relevancy / context_precision / context_recall]
-
-**Lý do phân tích:**
-
-> [Viết 3-5 câu giải thích tại sao distribution này hay bị failure, 
->  tại sao metric này thấp nhất trong corpus HR policy tiếng Việt]
-
----
-
-## 5. Suggested Fixes
-
-| Metric yếu | Root cause | Suggested fix |
-|---|---|---|
-| faithfulness | LLM hallucinating | |
-| context_recall | Missing relevant chunks | |
-| context_precision | Too many irrelevant chunks | |
-| answer_relevancy | Answer doesn't match question | |
-
----
-
-## 6. Nhận xét về Adversarial Distribution
-
-> [So sánh avg_score của adversarial vs factual vs multi_hop.
->  Pipeline có bị "nhầm" bởi version conflicts (v2023 vs v2024) không?
->  Câu nào trong bottom 10 rơi vào adversarial? Tại sao?]
+## 5. Đề xuất cải tiến
+* **Tinh chỉnh Prompt (Tighten System Prompt):** Ràng buộc chặt chẽ hơn để yêu cầu mô hình (LLM) chỉ được phép sử dụng thông tin từ văn bản đã được truy xuất, giảm tình trạng hallucination.
+* **Xử lý xung đột phiên bản:** Nên thêm metadata vào các vector chunk (như `version: 2024`, `status: active`) và ưu tiên (boost) các tài liệu hiện hành trong quá trình truy xuất (retrieval) để tránh lấy nhầm chính sách cũ.
+* **Hỗ trợ Multi-hop:** Sử dụng kỹ thuật chia nhỏ câu hỏi (query decomposition) để giải quyết các câu hỏi tính toán phức tạp (ví dụ: tách thành câu hỏi về "phụ cấp Manager" và "số ngày phép thâm niên 12 năm" trước khi tổng hợp lại).
