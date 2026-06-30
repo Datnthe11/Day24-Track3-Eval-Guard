@@ -71,7 +71,7 @@ def pii_scan(text: str, analyzer=None, anonymizer=None) -> dict:
     filtered_results = []
     for r in results:
         val = text[r.start:r.end].strip().lower()
-        if r.entity_type == "PERSON" and val in ["nhân viên", "nhân", "nhân viên muốn hỏi"]:
+        if r.entity_type == "PERSON" and val in ["nhân viên", "nhân", "nhân viên muốn hỏi", "nghỉ phép", "nghỉ phép năm", "nghỉ phép năm 2024", "chính sách nghỉ phép"]:
             continue
         filtered_results.append(r)
 
